@@ -35,22 +35,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# Save image in set directory
-# Read RGB image
-# img = cv2.imread('g4g.png')
-
-# print(type(img))
-# Output img with window name as 'image'
-# cv2.imshow('image', img)
-# Maintain output window utill user presses a key
-# cv2.waitKey(0)
-# Destroying present windows on screen
-# cv2.destroyAllWindows()
-
-# req = urllib.request.urlopen('https://ds-blobs-3.cdn.devapps.ru/11999470.png')
-# arr = numpy.asarray(bytearray(req.read()), dtype=numpy.uint8)
-# img = cv2.imdecode(arr, -1) # 'Load it as it is'
-#
-# cv2.imshow('lalala', img)
-# if cv2.waitKey() & 0xff == 27: quit()
