@@ -5,39 +5,17 @@ import easyocr
 from deprecated import deprecated
 
 
-def perspective_correction(img: np.ndarray = None, dots: list = [[100, 260], [700, 260], [0, 800], [1100, 800]]) -> np.ndarray:
-    # Locate points of the documents or object which you want to transform
-    pts1 = np.float32(dots)
-    pts2 = np.float32([[0, 0], [1000, 0],
-                       [0, 1400], [1000, 1400]])
-    matrix = cv2.getPerspectiveTransform(pts1, pts2)
-    result = cv2.warpPerspective(img, matrix, (1000, 1400))
-    return result
-
-
-def draw_polyline(img: np.ndarray = None, dots: list = [[100, 260], [700, 260], [1100, 800], [0, 800]]) -> np.ndarray:
-    pts = np.int32(dots)
-    is_closed = True
-    color = (255, 0, 0)  # Blue color in BGR
-    thickness = 1  # Line thickness of 2 px
-    # Using cv2.polylines() method draw a Blue polygon with thickness of 2 px
-    result = cv2.polylines(img, [pts], is_closed, color, thickness)
-    return result
-
-
 @deprecated(version='1.0', reason='outdated')
-def get_edges(img: np.ndarray = None) -> np.ndarray:
-    # Перевести изображение в оттенки серого
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # Найти границы изображения с помощью Canny edge detector
-    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-    # Применить алгоритм преобразования Хафа
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 100)
-    result = edges
-    return result
-
-
 def fix_rotated_page(img: np.ndarray = None) -> np.ndarray:
+    """
+    Возвращает повернутое изображение, у которого текст расположен горизонтально.
+
+    :param img: Исходное цветное наклоненное изображение.
+    :type img: numpy.ndarray
+    :return: Повернутое изображение так, чтобы текст был расположен в среднем горизонтально.
+    :rtype: numpy.ndarray
+    """
+
     # бинаризация изображения
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -65,6 +43,15 @@ def fix_rotated_page(img: np.ndarray = None) -> np.ndarray:
 
 
 def fix_distorted_page(img: np.ndarray = None) -> np.ndarray:
+    """
+    Возвращает цветное изображение с аффинным преобразованием типа параллелограмм, у которого строчки текста в среднем горизонтальные.
+
+    :param img: Исходное цветное изображение подверженное искажению в виде параллелограмма.
+    :type img: numpy.ndarray
+    :return: Исправленное изображение так, чтобы строчки текста были в среднем горизонтальными.
+    :rtype: numpy.ndarray
+    """
+
     # бинаризация изображения
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -88,13 +75,10 @@ def fix_distorted_page(img: np.ndarray = None) -> np.ndarray:
     # получение размеров изображения
     height, width = img.shape[:2]
     s = math.tan(math.radians(median_angle)) * width
-    # print(s)
 
     # задание координат точек исходного изображения и соответствующих им точек искаженного изображения
     src_pts = np.float32([[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]])
-    dst_pts = np.float32([[0, 0], [width - 1, 0 - int(s )], [0, height - 1], [width - 1, height - 1 - int(s )]])
-    # print(src_pts)
-    # print(dst_pts)
+    dst_pts = np.float32([[0, 0], [width - 1, 0 - int(s)], [0, height - 1], [width - 1, height - 1 - int(s)]])
 
     # получение матрицы преобразования
     M = cv2.getPerspectiveTransform(src_pts, dst_pts)
@@ -104,7 +88,17 @@ def fix_distorted_page(img: np.ndarray = None) -> np.ndarray:
     return distorted
 
 
+@deprecated(version='1.0', reason='outdated')
 def fix_perspective_blob(img: np.ndarray = None) -> np.ndarray:
+    """
+    Функция для выравнивания изображения с помощью перспективного преобразования. Для простых случаев достаточно эффективна и работает быстро.
+
+    :param img: Исходное цветное наклоненное изображение.
+    :type img: numpy.ndarray
+    :return: Исправленное изображение с выполненной коррекцией перспективы.
+    :rtype: numpy.ndarray
+    """
+
     # бинаризация изображения
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -131,9 +125,7 @@ def fix_perspective_blob(img: np.ndarray = None) -> np.ndarray:
 
     # Вычислить матрицу перспективного преобразования для выравнивания изображения
     width, height = int(rect[1][0]), int(rect[1][1])
-    print(width, height)
-    # dst_points = np.array([[0, height - 1], [0, 0], [width - 1, 0], [width - 1, height - 1]], dtype="float32")
-    s = 10 # сдвиг границ чтобы не обрезало края символов
+    s = 10  # сдвиг границ чтобы не обрезало края символов
     dst_points = np.array([[0 + s, height - 1 - s], [0 + s, 0 + s], [width - 1 - s, 0 + s], [width - 1 - s, height - 1 - s]], dtype="float32")
     M = cv2.getPerspectiveTransform(np.float32(box), dst_points)
 
@@ -143,6 +135,20 @@ def fix_perspective_blob(img: np.ndarray = None) -> np.ndarray:
 
 
 def remove_non_text_areas_ocr(img: np.ndarray = None, blocks: int = 20, language: str = 'en') -> np.ndarray:
+    """
+    Удаляет области изображения не содержащие текст, используя метод определения блоков (с перекрытием) и EasyOCR для определения факта наличия
+    текста. Возвращает новое изображение без областей в которых текст не распознан.
+
+    :param img: исходное изображение в формате NumPy массива.
+    :type img: np.ndarray
+    :param blocks: количество блоков на изображении для распознавания текста (по умолчанию 20)
+    :type blocks: int
+    :param language: язык текста на изображении (по умолчанию 'en' - английский)
+    :type language: str
+    :return: новое изображение без нераспознанных областей.
+    :rtype: np.ndarray
+    """
+
     # Преобразование изображения в оттенки серого
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -173,7 +179,7 @@ def remove_non_text_areas_ocr(img: np.ndarray = None, blocks: int = 20, language
 
     # Нормализовать массив вероятностей, чтобы значения были в диапазоне от 0 до 1
     # probabilities /= np.max(probabilities)
-    probabilities /= ((block_size/overlap) ** 2)
+    probabilities /= ((block_size / overlap) ** 2)
 
     # Создать тепловую карту на основе массива вероятностей
     heatmap = cv2.applyColorMap((probabilities * 255).astype(np.uint8), cv2.COLORMAP_HOT)
@@ -200,6 +206,18 @@ def remove_non_text_areas_ocr(img: np.ndarray = None, blocks: int = 20, language
 
 
 def fix_perspective_dilate(img: np.ndarray = None) -> np.ndarray:
+    """
+    Возвращает повернутое изображение, у которого левая граница текста становится вертикальной.
+    Производит перспективное преобразование изображения с помощью бинаризации, дилатации,
+    нахождения контуров и аппроксимации многоугольника с последующим построением Convex Hull.
+    Затем находит угол поворота, поворачивает изображение и возвращает его.
+
+    :param img: Исходное цветное наклоненное изображение.
+    :type img: numpy.ndarray
+    :return: Повернутое изображение так, чтобы левая граница текста была вертикальной.
+    :rtype: numpy.ndarray
+    """
+
     # перспективное преобразование
     # бинаризация изображения
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -237,12 +255,91 @@ def fix_perspective_dilate(img: np.ndarray = None) -> np.ndarray:
     dx = x2 - x1
     dy = y2 - y1
     angle = 180 - (math.atan2(dx, dy) * 180 / math.pi)
-    # приведение угла к диапазону [0, 360)
+    # приведение угла к диапазону (0, 360)
     angle = (angle + 360) % 360
     # print(angle)
 
     rows, cols = img.shape[:2]
     M = cv2.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
     rotated = cv2.warpAffine(img, M, (cols, rows), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-
     return rotated
+
+
+@deprecated(version='1.0', reason='outdated')
+def perspective_correction(img: np.ndarray = None, dots: list = [[100, 260], [700, 260], [0, 800], [1100, 800]]) -> np.ndarray:
+    """
+    Производит коррекцию перспективы на изображении, используя переданные точки
+
+    :param img: массив numpy, представляющий изображение.
+    :param dots: список из четырех точек, координаты которых используются для коррекции перспективы.
+    :return: массив numpy, представляющий корректированное изображение.
+    """
+    # Находим точки на документах или объекте, который следует преобразовать
+    pts1 = np.float32(dots)
+    pts2 = np.float32([[0, 0], [1000, 0],
+                       [0, 1400], [1000, 1400]])
+    # Получаем матрицу преобразования перспективы на основе точек
+    matrix = cv2.getPerspectiveTransform(pts1, pts2)
+    # Применяем матрицу преобразования к изображению
+    result = cv2.warpPerspective(img, matrix, (1000, 1400))
+    return result
+
+
+@deprecated(version='1.0', reason='outdated')
+def draw_polyline(img: np.ndarray = None, dots: list = [[100, 260], [700, 260], [1100, 800], [0, 800]]) -> np.ndarray:
+    """
+    Рисует полилинию (замкнутый четырехугольник) на изображении.
+
+    :param img:  Исходное изображение, на котором необходимо нарисовать полилинию.
+    :param dots: Список координат точек полилинии.
+    :return: Изображение с нарисованной полилинией.
+    """
+    pts = np.int32(dots)
+    is_closed = True
+    color = (255, 0, 0)  # Blue color in BGR
+    thickness = 2  # Line thickness of 2 px
+    # Using cv2.polylines() method draw a Blue polygon with thickness of 2 px
+    result = cv2.polylines(img, [pts], is_closed, color, thickness)
+    return result
+
+
+@deprecated(version='1.0', reason='outdated')
+def get_edges(img: np.ndarray = None) -> np.ndarray:
+    """
+    Получает границы на входном изображении с помощью алгоритма Canny edge detector
+    и алгоритма преобразования Хафа.
+
+    :param img: Исходное изображение.
+    :return: Изображение с найденными границами.
+    """
+
+    # Перевести изображение в оттенки серого
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Найти границы изображения с помощью Canny edge detector
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    # Применить алгоритм преобразования Хафа
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 100)
+    result = edges
+    return result
+
+
+def recognize_ocr(img: np.ndarray = None, language: str = 'en') -> str:
+    """
+    Распознает текст на изображении с помощью EasyOCR.
+
+    :param img: исходное изображение в формате NumPy массива.
+    :type img: np.ndarray
+    :param language: язык текста на изображении (по умолчанию 'en' - английский)
+    :type language: str
+    :return: результат распознавания.
+    :rtype: str
+    """
+
+    # Создать объект reader
+    reader = easyocr.Reader([language])
+
+    # Распознать текст на изображении
+    result = reader.readtext(img)
+
+    text = " ".join(detection[1] for detection in result)
+    return text
